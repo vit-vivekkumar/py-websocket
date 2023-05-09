@@ -10,14 +10,14 @@ class MyJsonWebsocketConsumer(JsonWebsocketConsumer):
     print('Websocket Connected...')
     print("Channel Layer", self.channel_layer)
     print("Channel Name", self.channel_name)
-    self.group_name = self.scope['url_route']['kwargs']['groupkaname']
-    self.current_groups=[]
-    self.current_groups.append(self.group_name)
-    print("Group Name:", self.group_name)
-    async_to_sync(self.channel_layer.group_add)(
-      self.group_name,
-      self.channel_name
-    )
+    # self.group_name = self.scope['url_route']['kwargs']['groupkaname']
+    # self.current_groups=[]
+    # self.current_groups.append(self.group_name)
+    # print("Group Name:", self.group_name)
+    # async_to_sync(self.channel_layer.group_add)(
+    #   self.group_name,
+    #   self.channel_name
+    # )
     self.accept()     # To accept the connection
 
   # This handler is called when data received from Client
@@ -25,6 +25,15 @@ class MyJsonWebsocketConsumer(JsonWebsocketConsumer):
   def receive_json(self, content, **kwargs):
     print('Message received from client...', content)
     # Find group object
+    print('action....',content)
+    # self.group_name = self.scope['url_route']['kwargs']['groupkaname']
+    # self.current_groups=[]
+    # self.current_groups.append(self.group_name)
+    # print("Group Name:", self.group_name)
+    # async_to_sync(self.channel_layer.group_add)(
+    #   self.group_name,
+    #   self.channel_name
+    # )
     group = Group.objects.get(name=self.group_name)
     chat = Chat(
       content = content['msg'],
@@ -61,34 +70,38 @@ class MyAsyncJsonWebsocketConsumer(AsyncJsonWebsocketConsumer):
     print('Websocket Connected...')
     print("Channel Layer", self.channel_layer)
     print("Channel Name", self.channel_name)
-    
-    self.group_name = self.scope['url_route']['kwargs']['groupkaname']
-
-    print("Group Name:", self.group_name)
-    await self.channel_layer.group_add(
-      self.group_name,
-      self.channel_name
-    )
     await self.accept()     # To accept the connection
 
   # This handler is called when data received from Client
   # with decoded JSON content
   async def receive_json(self, content, **kwargs):
     print('Message received from client...', content)
-     # Find group object
-    group = await database_sync_to_async(Group.objects.get)(name=self.group_name)
-    chat = Chat(
-      content = content['msg'],
-      group = group
-    )
-    await database_sync_to_async(chat.save)()
-    await self.channel_layer.group_send(
-      self.group_name,
-      {
-        'type': 'chat.message',
-        'message':content['msg']
-      }
-    )
+    # Find group object
+    # Find group object
+    if content['action']=='add_group':
+      self.group_name = content['group']
+      print("Group Name:", self.group_name)
+      await self.channel_layer.group_add(
+        self.group_name,
+        self.channel_name
+      )
+    if content['action']=='send':
+      self.group_name=content['group']
+      group = await database_sync_to_async(Group.objects.get)(name=self.group_name)
+      chat = Chat(
+        content = content['msg'],
+        group = group
+      )
+      await database_sync_to_async(chat.save)()
+      await self.channel_layer.group_send(
+        self.group_name,
+        {
+          'type': 'chat.message',
+          'message':content['msg']
+        }
+      )
+    else:
+      pass
 
   async def chat_message(self, event):
     print("Event...", event)
