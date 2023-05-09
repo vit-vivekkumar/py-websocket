@@ -1,12 +1,59 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-    <meta charset="UTF-8">
-    <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document</title>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Document</title>
 </head>
+
 <body>
-    <h1>let's chat</h1>
+  <h1>Group Name: {{groupname}}</h1>
+  <textarea id="chat-log" cols="100" rows="20">
+    {% for chat in chats %}
+      {{chat.content}}
+    {% endfor %}
+  </textarea><br>
+  <input id="chat-message-input" type="text" size="100"><br>
+  <input id="chat-message-submit" type="button" value="Send">
+  {{ groupname|json_script:"group-name" }}
+
+  <script>
+    const groupName = JSON.parse(document.getElementById("group-name").textContent)
+    console.log("Group Name...", groupName)
+    var ws = new WebSocket(
+      'ws://'
+      + window.location.host
+      + '/ws/jwc/'
+      + groupName
+      + '/'
+    )
+    ws.onopen = function () {
+      console.log('WebSocket Connection Open...')
+    };
+
+    ws.onmessage = function (event) {
+      console.log("Message received from server...", event.data)
+      const data = JSON.parse(event.data)
+      console.log("Data...", data)
+      document.querySelector('#chat-log').value += (data.message + '\n')
+    }
+
+    ws.onclose = function (event) {
+      console.error('Chat socket closed unexpectedly');
+    };
+
+    document.getElementById("chat-message-submit").onclick = function (event) {
+      const messageInputDom = document.getElementById("chat-message-input")
+      const message = messageInputDom.value
+      ws.send(JSON.stringify({
+        'msg': message
+      }))
+      messageInputDom.value = '';
+    }
+
+  </script>
 </body>
+
 </html>
